@@ -1,0 +1,37 @@
+services:
+  db:
+    image: ankane/pgvector:v0.5.1
+    container_name: deeptrace-db
+    environment:
+      POSTGRES_DB: deeptrace
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d deeptrace"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: deeptrace-backend:latest
+    container_name: deeptrace-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@db:5432/deeptrace
+      - GITHUB_WEBHOOK_SECRET=deeptrace_secret_123
+      - PORT=8000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
